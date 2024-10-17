@@ -1,5 +1,5 @@
 # Description
-Predicts mass of ice scrapers created via injection molding based on various variables that are measured during production
+Predicts mass of ice scrapers created via injection molding based on various variables that are measured during production. (Mass is the most important measure to predict the quality of an ice scraper)
 
 # Answered questions
 1. Analyze the training data. Is there any variable which is highly correlated to another variable? List all
