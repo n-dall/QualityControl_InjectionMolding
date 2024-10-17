@@ -40,8 +40,9 @@ def findSingleVariable():
 
     # Filter out variables for which the p-value is larger than 0.05 (Null-hypothesis can't be rejected for those variables)
     indices_to_delete = np.where(p_values > 0.05)
-    p_values = p_values[p_values < 0.05]
+    p_values = np.delete(p_values, indices_to_delete)
     r_squared_values = np.delete(r_squared_values, indices_to_delete)
+    variable_names = np.delete(variable_names, indices_to_delete)
 
     # Pick highest r2
     highest_r2_index = np.argmax(r_squared_values)
