@@ -50,16 +50,19 @@ def findSingleVariable():
     return variable_names[highest_r2_index], r_squared_values[highest_r2_index], p_values[highest_r2_index]
 
 def multipleLinearRegression():
+    # Train model with all 8 predictors
     train_data_x = train_data.drop(['mass'], axis=1)
     variable_names = train_data_x.columns
 
     x = sm.add_constant(train_data_x)
     model = sm.OLS(train_data['mass'], x).fit()
+    # Remove predictor with highest p value
     pvals = model.pvalues[1:]
     index_to_remove = np.argmax(pvals)
     highest_p_val = pvals[index_to_remove]
     corresponding_variable = variable_names[index_to_remove]
 
+    # Repeat until no more p-values above 0.05 or no more predictors
     while highest_p_val > 0.05 and len(variable_names) > 0:
         train_data_x = train_data_x.drop([corresponding_variable], axis=1)
         variable_names = train_data_x.columns
