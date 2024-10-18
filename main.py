@@ -3,6 +3,8 @@ import numpy as np
 import statsmodels.api as sm
 
 train_data = pd.read_csv("InjectionMolding_Train.csv")
+X_train = train_data.drop(['mass'], axis=1)
+Y_train = train_data['mass']
 test_data = pd.read_csv("InjectionMolding_Test.csv")
 
 def getCorrelatedVariables():
@@ -26,15 +28,15 @@ def findSingleVariable():
     # Alternative Strategy: Pick the variable that has the highest correlation coefficient with 'mass'
 
     # Get all variable names and remove mass from array
-    variable_names = train_data.columns[:8]
+    variable_names = X_train.columns
 
     # Values at index 0 are for variable at index 0 in variable_names, Values at index 1 ...
     r_squared_values = np.array([])
     p_values = np.array([])
 
     for variable in variable_names:
-        x = sm.add_constant(train_data[variable])
-        model = sm.OLS(train_data['mass'], x).fit()
+        x = sm.add_constant(X_train[variable])
+        model = sm.OLS(Y_train, x).fit()
         r_squared_values = np.append(r_squared_values, model.rsquared)
         p_values = np.append(p_values, model.pvalues[1])
 
@@ -51,11 +53,11 @@ def findSingleVariable():
 
 def multipleLinearRegression():
     # Train model with all 8 predictors
-    train_data_x = train_data.drop(['mass'], axis=1)
-    variable_names = train_data_x.columns
+    train_data_x = X_train
+    variable_names = X_train.columns
 
     x = sm.add_constant(train_data_x)
-    model = sm.OLS(train_data['mass'], x).fit()
+    model = sm.OLS(Y_train, x).fit()
     # Remove predictor with highest p value
     pvals = model.pvalues[1:]
     index_to_remove = np.argmax(pvals)
@@ -68,16 +70,19 @@ def multipleLinearRegression():
         variable_names = train_data_x.columns
 
         x = sm.add_constant(train_data_x)
-        model = sm.OLS(train_data['mass'], x).fit()
+        model = sm.OLS(Y_train, x).fit()
         pvals = model.pvalues[1:]
         index_to_remove = np.argmax(pvals)
         highest_p_val = pvals[index_to_remove]
         corresponding_variable = variable_names[index_to_remove]
 
-    return model.pvalues, model.rsquared
+    return model.pvalues, model.rsquared, model
 
 
-
+def predictDatasets(model):
+    y_train_pred = model.predict(train_data.drop(['mass'], axis=1))
+    y_train_true = train_data['mass']
+    #print(sm.tools.eval_measures.mse(y_train_true, y_train_pred, axis=0))
 
 def main():
     # Answer to question 1:
@@ -92,10 +97,13 @@ def main():
     #print('\n')
 
     # Answer to question 3:
-    print("Question 3: ")
-    pvalues, r2 = multipleLinearRegression()
-    print(pvalues)
-    print("\nR-squared: "+str(r2))
+    #print("Question 3: ")
+    pvalues, r2, model = multipleLinearRegression()
+    #print(pvalues)
+    #print("\nR-squared: "+str(r2))
+
+    # Answer to question 4:
+    predictDatasets(model)
 
 if __name__ == "__main__":
     main()
