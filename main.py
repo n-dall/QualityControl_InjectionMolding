@@ -49,19 +49,50 @@ def findSingleVariable():
 
     return variable_names[highest_r2_index], r_squared_values[highest_r2_index], p_values[highest_r2_index]
 
+def multipleLinearRegression():
+    train_data_x = train_data.drop(['mass'], axis=1)
+    variable_names = train_data_x.columns
+
+    x = sm.add_constant(train_data_x)
+    model = sm.OLS(train_data['mass'], x).fit()
+    pvals = model.pvalues[1:]
+    index_to_remove = np.argmax(pvals)
+    highest_p_val = pvals[index_to_remove]
+    corresponding_variable = variable_names[index_to_remove]
+
+    while highest_p_val > 0.05 and len(variable_names) > 0:
+        train_data_x = train_data_x.drop([corresponding_variable], axis=1)
+        variable_names = train_data_x.columns
+
+        x = sm.add_constant(train_data_x)
+        model = sm.OLS(train_data['mass'], x).fit()
+        pvals = model.pvalues[1:]
+        index_to_remove = np.argmax(pvals)
+        highest_p_val = pvals[index_to_remove]
+        corresponding_variable = variable_names[index_to_remove]
+
+    return model.pvalues, model.rsquared
+
+
 
 
 def main():
     # Answer to question 1:
-    print("Question 1: ")
-    print(getCorrelatedVariables())
-    print('\n')
+    #print("Question 1: ")
+    #print(getCorrelatedVariables())
+    #print('\n')
 
     # Answer to question 2:
-    print("Question 2: ")
-    variable_name, r2, p = findSingleVariable()
-    print(variable_name+",", "R-squared: "+str(r2)+",", "p-value: "+str(p))
-    print('\n')
+    #print("Question 2: ")
+    #variable_name, r2, p = findSingleVariable()
+    #print(variable_name+",", "R-squared: "+str(r2)+",", "p-value: "+str(p))
+    #print('\n')
+
+    # Answer to question 3:
+    print("Question 3: ")
+    pvalues, r2 = multipleLinearRegression()
+    print(pvalues)
+    print("\nR-squared: "+str(r2))
 
 if __name__ == "__main__":
     main()
