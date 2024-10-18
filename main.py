@@ -6,6 +6,8 @@ train_data = pd.read_csv("InjectionMolding_Train.csv")
 X_train = train_data.drop(['mass'], axis=1)
 Y_train = train_data['mass']
 test_data = pd.read_csv("InjectionMolding_Test.csv")
+X_test = test_data.drop(['mass'], axis=1)
+Y_test = test_data['mass']
 
 def getCorrelatedVariables():
     train_correlation_matrix = train_data.corr(method='pearson', min_periods=1, numeric_only=False)
@@ -76,13 +78,19 @@ def multipleLinearRegression():
         highest_p_val = pvals[index_to_remove]
         corresponding_variable = variable_names[index_to_remove]
 
-    return model.pvalues, model.rsquared, model
+    return model.pvalues, model.rsquared, model, variable_names
 
 
-def predictDatasets(model):
-    y_train_pred = model.predict(train_data.drop(['mass'], axis=1))
-    y_train_true = train_data['mass']
-    #print(sm.tools.eval_measures.mse(y_train_true, y_train_pred, axis=0))
+def predictDatasets(model, variable_names):
+    X_train_modified = sm.add_constant(X_train[variable_names])
+    y_train_pred = model.predict(X_train_modified)
+    mse_train = sm.tools.eval_measures.mse(Y_train, y_train_pred, axis=0)
+
+    X_test_modified = sm.add_constant(X_test[variable_names])
+    y_test_pred = model.predict(X_test_modified)
+    mse_test = sm.tools.eval_measures.mse(Y_test, y_test_pred, axis=0)
+
+    return mse_train, mse_test
 
 def main():
     # Answer to question 1:
@@ -98,12 +106,14 @@ def main():
 
     # Answer to question 3:
     #print("Question 3: ")
-    pvalues, r2, model = multipleLinearRegression()
+    pvalues, r2, model, variable_names = multipleLinearRegression()
     #print(pvalues)
     #print("\nR-squared: "+str(r2))
 
     # Answer to question 4:
-    predictDatasets(model)
+    print("Question 4: ")
+    mse_train, mse_test = predictDatasets(model, variable_names)
+    print("Train MSE: "+str(mse_train)+"\nTest MSE: "+str(mse_test))
 
 if __name__ == "__main__":
     main()
