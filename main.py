@@ -1,6 +1,10 @@
 import pandas as pd
+pd.options.mode.chained_assignment = None
 import numpy as np
 import statsmodels.api as sm
+import seaborn as sns
+import matplotlib
+matplotlib.use('TkAgg')
 
 train_data = pd.read_csv("InjectionMolding_Train.csv")
 X_train = train_data.drop(['mass'], axis=1)
@@ -53,10 +57,15 @@ def findSingleVariable():
 
     return variable_names[highest_r2_index], r_squared_values[highest_r2_index], p_values[highest_r2_index]
 
-def multipleLinearRegression():
-    # Train model with all 8 predictors
-    train_data_x = X_train
-    variable_names = X_train.columns
+def multipleLinearRegression(var_to_drop = 'Inj1PosVolAct_Var'):
+    if var_to_drop == 'None':
+        train_data_x = X_train
+    elif var_to_drop == 'Inj1PrsAct_meanOfInjPhase':
+        train_data_x = X_train.drop(['Inj1PrsAct_meanOfInjPhase'], axis=1)
+    else:
+        train_data_x = X_train.drop(['Inj1PosVolAct_Var'], axis=1)
+
+    variable_names = train_data_x.columns
 
     x = sm.add_constant(train_data_x)
     model = sm.OLS(Y_train, x).fit()
@@ -81,16 +90,52 @@ def multipleLinearRegression():
     return model.pvalues, model.rsquared, model, variable_names
 
 
-def predictDatasets(model, variable_names):
-    X_train_modified = sm.add_constant(X_train[variable_names])
+def predictDatasets(model, relevant_variables):
+    X_train_modified = sm.add_constant(X_train[relevant_variables])
     y_train_pred = model.predict(X_train_modified)
     mse_train = sm.tools.eval_measures.mse(Y_train, y_train_pred, axis=0)
 
-    X_test_modified = sm.add_constant(X_test[variable_names])
+    X_test_modified = sm.add_constant(X_test[relevant_variables])
     y_test_pred = model.predict(X_test_modified)
     mse_test = sm.tools.eval_measures.mse(Y_test, y_test_pred, axis=0)
 
     return mse_train, mse_test
+
+def higherOrderTerms(relevant_variables):
+    # Relevant variables: Inj1PrsAct_meanOfInjPhase, Inj1HtgEd3Act_1stPCscore, ClpFceAct_1stPCscore, OilTmp1Act_1stPCscore
+
+    train_data_x = X_train[relevant_variables]
+
+    # For plotting all variables against all others
+    # relevant_x_y = train_data.drop([variable for variable in train_data.columns if variable not in relevant_variables and variable != 'mass'], axis=1)
+    # sns.pairplot(relevant_x_y)
+    # matplotlib.pyplot.show()
+
+    # These together bump R2 from 0.9818914389632266 to 0.9825576670684059 (second one not really relevant)
+    # train_data_x['Inj1PrsAct_meanOfInjPhase_SQUARED'] = train_data_x['Inj1PrsAct_meanOfInjPhase'] ** 2
+    # train_data_x['Inj1PrsAct_meanOfInjPhase-Inj1HtgEd3Act_1stPCscore'] = train_data_x['Inj1PrsAct_meanOfInjPhase'] * train_data_x['Inj1HtgEd3Act_1stPCscore']
+
+    # This bumps R2 from 0.9818914389632266 to 0.9840341743166936
+    train_data_x['OilTmp1Act_1stPCscore-ClpFceAct_1stPCscore'] = train_data_x['OilTmp1Act_1stPCscore'] * train_data_x['ClpFceAct_1stPCscore']
+
+    # Exhaustive search for interaction terms (resulted in the one above)
+    #r2 = {}
+    #for variable_1 in relevant_variables:
+    #    for variable_2 in relevant_variables:
+    #        train_data_x = X_train[relevant_variables]
+    #        train_data_x[f'{variable_1}-{variable_2}'] = train_data_x[
+    #                                                                                 f'{variable_1}'] * \
+    #                                                                             train_data_x[
+    #                                                                     f'{variable_2}']
+    #        x = sm.add_constant(train_data_x)
+    #        model = sm.OLS(Y_train, x).fit()
+    #        r2[f'{variable_1}-{variable_2}'] = model.rsquared
+    #print(r2)
+    x = sm.add_constant(train_data_x)
+    model = sm.OLS(Y_train, x).fit()
+
+    return model.pvalues, model.rsquared
+
 
 def main():
     # Answer to question 1:
@@ -105,15 +150,21 @@ def main():
     #print('\n')
 
     # Answer to question 3:
-    #print("Question 3: ")
+    print("Question 3: ")
     pvalues, r2, model, variable_names = multipleLinearRegression()
-    #print(pvalues)
-    #print("\nR-squared: "+str(r2))
+    print(pvalues)
+    print("\nR-squared: "+str(r2)+"\n")
 
     # Answer to question 4:
-    print("Question 4: ")
-    mse_train, mse_test = predictDatasets(model, variable_names)
-    print("Train MSE: "+str(mse_train)+"\nTest MSE: "+str(mse_test))
+    # print("Question 4: ")
+    # mse_train, mse_test = predictDatasets(model, variable_names)
+    # print("Train MSE: "+str(mse_train)+"\nTest MSE: "+str(mse_test)+"\n")
+
+    # Answer to question 5:
+    print("Question 5: ")
+    pvalues_higher_order, r2_higher_order = higherOrderTerms(variable_names)
+    print(pvalues_higher_order)
+    print("\nR-squared: "+str(r2_higher_order)+"\n")
 
 if __name__ == "__main__":
     main()
