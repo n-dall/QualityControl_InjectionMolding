@@ -101,40 +101,83 @@ def predictDatasets(model, relevant_variables):
 
     return mse_train, mse_test
 
+def pairPlotRelevantVariables(relevant_variables):
+    # For plotting all relevant variables against all others
+    relevant_x_y = train_data.drop([variable for variable in train_data.columns if variable not in relevant_variables and variable != 'mass'], axis=1)
+    sns.pairplot(relevant_x_y)
+    matplotlib.pyplot.show()
+
+def plotResiduals(model, relevant_variables, test=True):
+    if test:
+        X_test_modified = sm.add_constant(X_test[relevant_variables])
+        y_test_pred = model.predict(X_test_modified)
+
+        residuals = Y_test - y_test_pred
+
+        matplotlib.pyplot.figure()
+        matplotlib.pyplot.scatter(y_test_pred, residuals)
+        matplotlib.pyplot.title('Residuals as a function of test predictions')
+        matplotlib.pyplot.xlabel('Predictions')
+        matplotlib.pyplot.ylabel('Residuals')
+        matplotlib.pyplot.show()
+    else:
+        X_train_modified = sm.add_constant(X_train[relevant_variables])
+        y_train_pred = model.predict(X_train_modified)
+
+        residuals = Y_train - y_train_pred
+
+        matplotlib.pyplot.figure()
+        matplotlib.pyplot.scatter(y_train_pred, residuals)
+        matplotlib.pyplot.title('Residuals as a function of train predictions')
+        matplotlib.pyplot.xlabel('Predictions')
+        matplotlib.pyplot.ylabel('Residuals')
+        matplotlib.pyplot.show()
+
+
 def higherOrderTerms(relevant_variables):
     # Relevant variables: Inj1PrsAct_meanOfInjPhase, Inj1HtgEd3Act_1stPCscore, ClpFceAct_1stPCscore, OilTmp1Act_1stPCscore
 
     train_data_x = X_train[relevant_variables]
-
-    # For plotting all variables against all others
-    # relevant_x_y = train_data.drop([variable for variable in train_data.columns if variable not in relevant_variables and variable != 'mass'], axis=1)
-    # sns.pairplot(relevant_x_y)
-    # matplotlib.pyplot.show()
+    test_data_x = X_test[relevant_variables]
 
     # These together bump R2 from 0.9818914389632266 to 0.9825576670684059 (second one not really relevant)
+    # But they increase test MSE
     # train_data_x['Inj1PrsAct_meanOfInjPhase_SQUARED'] = train_data_x['Inj1PrsAct_meanOfInjPhase'] ** 2
+    # test_data_x['Inj1PrsAct_meanOfInjPhase_SQUARED'] = test_data_x['Inj1PrsAct_meanOfInjPhase'] ** 2
     # train_data_x['Inj1PrsAct_meanOfInjPhase-Inj1HtgEd3Act_1stPCscore'] = train_data_x['Inj1PrsAct_meanOfInjPhase'] * train_data_x['Inj1HtgEd3Act_1stPCscore']
 
-    # This bumps R2 from 0.9818914389632266 to 0.9840341743166936
-    train_data_x['OilTmp1Act_1stPCscore-ClpFceAct_1stPCscore'] = train_data_x['OilTmp1Act_1stPCscore'] * train_data_x['ClpFceAct_1stPCscore']
+    # Exhaustive search for quadratic/interaction terms
+    highest_r2 = 0
+    var_1 = ''
+    var_2 = ''
+    for variable_1 in relevant_variables:
+        for variable_2 in relevant_variables:
+            train_data_x = X_train[relevant_variables]
+            train_data_x[f'{variable_1}-{variable_2}'] = train_data_x[f'{variable_1}'] * \
+                                                                                 train_data_x[f'{variable_2}']
+            x = sm.add_constant(train_data_x)
+            model = sm.OLS(Y_train, x).fit()
 
-    # Exhaustive search for interaction terms (resulted in the one above)
-    #r2 = {}
-    #for variable_1 in relevant_variables:
-    #    for variable_2 in relevant_variables:
-    #        train_data_x = X_train[relevant_variables]
-    #        train_data_x[f'{variable_1}-{variable_2}'] = train_data_x[
-    #                                                                                 f'{variable_1}'] * \
-    #                                                                             train_data_x[
-    #                                                                     f'{variable_2}']
-    #        x = sm.add_constant(train_data_x)
-    #        model = sm.OLS(Y_train, x).fit()
-    #        r2[f'{variable_1}-{variable_2}'] = model.rsquared
-    #print(r2)
+            if model.rsquared > highest_r2:
+                highest_r2 = model.rsquared
+                var_1 = variable_1
+                var_2 = variable_2
+
+    train_data_x = X_train[relevant_variables]
+    train_data_x[f'{var_1}-{var_2}'] = train_data_x[f'{var_1}'] * train_data_x[f'{var_2}']
+    test_data_x[f'{var_1}-{var_2}'] = test_data_x[f'{var_1}'] * test_data_x[f'{var_2}']
+
     x = sm.add_constant(train_data_x)
     model = sm.OLS(Y_train, x).fit()
 
-    return model.pvalues, model.rsquared
+
+    y_train_pred = model.predict(x)
+    mse_train = sm.tools.eval_measures.mse(Y_train, y_train_pred, axis=0)
+
+    y_test_pred = model.predict(sm.add_constant(test_data_x))
+    mse_test = sm.tools.eval_measures.mse(Y_test, y_test_pred, axis=0)
+
+    return model.pvalues, model.rsquared, mse_train, mse_test
 
 
 def main():
@@ -156,15 +199,18 @@ def main():
     print("\nR-squared: "+str(r2)+"\n")
 
     # Answer to question 4:
-    # print("Question 4: ")
-    # mse_train, mse_test = predictDatasets(model, variable_names)
-    # print("Train MSE: "+str(mse_train)+"\nTest MSE: "+str(mse_test)+"\n")
+    print("Question 4: ")
+    mse_train, mse_test = predictDatasets(model, variable_names)
+    print("Train MSE: "+str(mse_train)+"\nTest MSE: "+str(mse_test)+"\n")
 
     # Answer to question 5:
     print("Question 5: ")
-    pvalues_higher_order, r2_higher_order = higherOrderTerms(variable_names)
+    # pairPlotRelevantVariables(variable_names)
+    # plotResiduals(model, variable_names, test=False)
+    pvalues_higher_order, r2_higher_order, mse_train, mse_test = higherOrderTerms(variable_names)
     print(pvalues_higher_order)
     print("\nR-squared: "+str(r2_higher_order)+"\n")
+    print("Train MSE: "+str(mse_train)+"\nTest MSE: "+str(mse_test)+"\n")
 
 if __name__ == "__main__":
     main()
