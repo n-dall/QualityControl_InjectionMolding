@@ -140,32 +140,46 @@ def higherOrderTerms(relevant_variables):
     train_data_x = X_train[relevant_variables]
     test_data_x = X_test[relevant_variables]
 
-    # These together bump R2 from 0.9818914389632266 to 0.9825576670684059 (second one not really relevant)
-    # But they increase test MSE
-    # train_data_x['Inj1PrsAct_meanOfInjPhase_SQUARED'] = train_data_x['Inj1PrsAct_meanOfInjPhase'] ** 2
-    # test_data_x['Inj1PrsAct_meanOfInjPhase_SQUARED'] = test_data_x['Inj1PrsAct_meanOfInjPhase'] ** 2
-    # train_data_x['Inj1PrsAct_meanOfInjPhase-Inj1HtgEd3Act_1stPCscore'] = train_data_x['Inj1PrsAct_meanOfInjPhase'] * train_data_x['Inj1HtgEd3Act_1stPCscore']
+    # Exhaustive search for quadratic/interaction terms (selects only the single best one)
+    #highest_r2 = 0
+    #var_1 = ''
+    #var_2 = ''
+    #for variable_1 in relevant_variables:
+    #    for variable_2 in relevant_variables:
+    #        train_data_x = X_train[relevant_variables]
+    #        train_data_x[f'{variable_1}-{variable_2}'] = train_data_x[f'{variable_1}'] * \
+    #                                                                             train_data_x[f'{variable_2}']
+    #        x = sm.add_constant(train_data_x)
+    #        model = sm.OLS(Y_train, x).fit()
 
-    # Exhaustive search for quadratic/interaction terms
-    highest_r2 = 0
-    var_1 = ''
-    var_2 = ''
+    #        if model.rsquared > highest_r2:
+    #            highest_r2 = model.rsquared
+    #            var_1 = variable_1
+    #            var_2 = variable_2
+
+    #train_data_x = X_train[relevant_variables]
+    #train_data_x[f'{var_1}-{var_2}'] = train_data_x[f'{var_1}'] * train_data_x[f'{var_2}']
+    #test_data_x[f'{var_1}-{var_2}'] = test_data_x[f'{var_1}'] * test_data_x[f'{var_2}']
+
+    # Exhaustive search + backward elimination
     for variable_1 in relevant_variables:
         for variable_2 in relevant_variables:
-            train_data_x = X_train[relevant_variables]
             train_data_x[f'{variable_1}-{variable_2}'] = train_data_x[f'{variable_1}'] * \
                                                                                  train_data_x[f'{variable_2}']
-            x = sm.add_constant(train_data_x)
-            model = sm.OLS(Y_train, x).fit()
+            test_data_x[f'{variable_1}-{variable_2}'] = test_data_x[f'{variable_1}'] * \
+                                                         test_data_x[f'{variable_2}']
 
-            if model.rsquared > highest_r2:
-                highest_r2 = model.rsquared
-                var_1 = variable_1
-                var_2 = variable_2
+    x = sm.add_constant(train_data_x)
+    model = sm.OLS(Y_train, x).fit()
 
-    train_data_x = X_train[relevant_variables]
-    train_data_x[f'{var_1}-{var_2}'] = train_data_x[f'{var_1}'] * train_data_x[f'{var_2}']
-    test_data_x[f'{var_1}-{var_2}'] = test_data_x[f'{var_1}'] * test_data_x[f'{var_2}']
+    for variable_1 in relevant_variables:
+        for variable_2 in relevant_variables:
+            if model.pvalues[f'{variable_1}-{variable_2}'] > 0.05:
+                train_data_x = train_data_x.drop([f'{variable_1}-{variable_2}'], axis=1)
+                test_data_x = test_data_x.drop([f'{variable_1}-{variable_2}'], axis=1)
+            if f'{variable_1}-{variable_2}' in train_data_x.columns and f'{variable_2}-{variable_1}' in train_data_x.columns:
+                train_data_x = train_data_x.drop([f'{variable_1}-{variable_2}'], axis=1)
+                test_data_x = test_data_x.drop([f'{variable_1}-{variable_2}'], axis=1)
 
     x = sm.add_constant(train_data_x)
     model = sm.OLS(Y_train, x).fit()
