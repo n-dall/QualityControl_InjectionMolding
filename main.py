@@ -63,55 +63,24 @@ def multipleLinearRegression():
     x = sm.add_constant(train_data_x)
     model = sm.OLS(Y_train, x).fit()
 
-    rsquared = []
-    vars_to_drop = []
-    for i in range(7):
-        var_temp = ''
-        rsquared_temp = 0
-
-        for variable in variable_names:
-            train_data_x_temp = train_data_x.drop([variable], axis=1)
-            x = sm.add_constant(train_data_x_temp)
-            model = sm.OLS(Y_train, x).fit()
-            if model.rsquared > rsquared_temp:
-                rsquared_temp = model.rsquared
-                var_temp = variable
-        rsquared.append(rsquared_temp)
-        vars_to_drop.append(var_temp)
-
-        train_data_x = X_train.drop(['Inj1PosVolAct_Var'], axis=1)
-        train_data_x = train_data_x.drop(vars_to_drop, axis=1)
-        variable_names = train_data_x.columns
-
-
-    i = np.sum([1 for r2 in rsquared if r2 > 0.9])
-
-    train_data_x = X_train.drop(['Inj1PosVolAct_Var'], axis=1)
-    train_data_x = train_data_x.drop(vars_to_drop[:i], axis=1)
-
-    variable_names = train_data_x.columns
-
-    x = sm.add_constant(train_data_x)
-    model = sm.OLS(Y_train, x).fit()
-
 
     # Remove predictor with highest p value
-    #pvals = model.pvalues[1:]
-    #index_to_remove = np.argmax(pvals)
-    #highest_p_val = pvals[index_to_remove]
-    #corresponding_variable = variable_names[index_to_remove]
+    pvals = model.pvalues[1:]
+    index_to_remove = np.argmax(pvals)
+    highest_p_val = pvals[index_to_remove]
+    corresponding_variable = variable_names[index_to_remove]
 
     # Repeat until no more p-values above 0.05 or no more predictors
-    #while highest_p_val > 0.05 and len(variable_names) > 0:
-    #    train_data_x = train_data_x.drop([corresponding_variable], axis=1)
-    #    variable_names = train_data_x.columns
+    while highest_p_val > 0.05 and len(variable_names) > 0:
+        train_data_x = train_data_x.drop([corresponding_variable], axis=1)
+        variable_names = train_data_x.columns
 
-    #    x = sm.add_constant(train_data_x)
-    #    model = sm.OLS(Y_train, x).fit()
-    #    pvals = model.pvalues[1:]
-    #    index_to_remove = np.argmax(pvals)
-    #    highest_p_val = pvals[index_to_remove]
-    #    corresponding_variable = variable_names[index_to_remove]
+        x = sm.add_constant(train_data_x)
+        model = sm.OLS(Y_train, x).fit()
+        pvals = model.pvalues[1:]
+        index_to_remove = np.argmax(pvals)
+        highest_p_val = pvals[index_to_remove]
+        corresponding_variable = variable_names[index_to_remove]
 
     return model.pvalues, model.rsquared, model, variable_names
 
@@ -168,31 +137,31 @@ def higherOrderTerms(relevant_variables):
     x = sm.add_constant(train_data_x)
     model = sm.OLS(Y_train, x).fit()
 
-    pvals = model.pvalues[1:]
-    index_to_remove = np.argmax(pvals)
-    highest_p_val = pvals[index_to_remove]
-    corresponding_variable = train_data_x.columns[index_to_remove]
-    while highest_p_val > 0.05:
-        # Keep linear variables (hierarchical principle)
-        if "-" not in corresponding_variable:
-            pvals[index_to_remove] = 0
-            index_to_remove = np.argmax(pvals)
-            highest_p_val = pvals[index_to_remove]
-            corresponding_variable = train_data_x.columns[index_to_remove]
-            continue
+    #pvals = model.pvalues[1:]
+    #index_to_remove = np.argmax(pvals)
+    #highest_p_val = pvals[index_to_remove]
+    #corresponding_variable = train_data_x.columns[index_to_remove]
+    #while highest_p_val > 0.05:
+    #    # Keep linear variables (hierarchical principle)
+    #    if "-" not in corresponding_variable:
+    #        pvals[index_to_remove] = 0
+    #        index_to_remove = np.argmax(pvals)
+    #        highest_p_val = pvals[index_to_remove]
+    #        corresponding_variable = train_data_x.columns[index_to_remove]
+    #        continue
 
-        train_data_x = train_data_x.drop([corresponding_variable], axis=1)
-        test_data_x = test_data_x.drop([corresponding_variable], axis=1)
+    #    train_data_x = train_data_x.drop([corresponding_variable], axis=1)
+    #    test_data_x = test_data_x.drop([corresponding_variable], axis=1)
 
-        x = sm.add_constant(train_data_x)
-        model = sm.OLS(Y_train, x).fit()
-        pvals = model.pvalues[1:]
-        index_to_remove = np.argmax(pvals)
-        highest_p_val = pvals[index_to_remove]
-        corresponding_variable = train_data_x.columns[index_to_remove]
+    #    x = sm.add_constant(train_data_x)
+    #    model = sm.OLS(Y_train, x).fit()
+    #    pvals = model.pvalues[1:]
+    #    index_to_remove = np.argmax(pvals)
+    #    highest_p_val = pvals[index_to_remove]
+    #    corresponding_variable = train_data_x.columns[index_to_remove]
 
-    x = sm.add_constant(train_data_x)
-    model = sm.OLS(Y_train, x).fit()
+    #x = sm.add_constant(train_data_x)
+    #model = sm.OLS(Y_train, x).fit()
 
 
     y_train_pred = model.predict(x)
